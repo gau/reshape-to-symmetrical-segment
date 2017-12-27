@@ -8,12 +8,13 @@
 
 	// UI dialog ---------------------------------------------------
 	const SCRIPT_TITLE = 'セグメントを対称にする';
-	const SCRIPT_VERSION = '0.5.0';
+	const SCRIPT_VERSION = '0.5.1';
 	const ILLUSTRATOR_VERSION = Number(app.version.split('.')[0]);
 
 	var doc = app.activeDocument;
 	if(doc.selection.length < 1) return;
 	var targetPoints = getTargetPoints(doc.selection);
+	if(targetPoints.length < 2) return;
 
 	var MainDialog = function() {
 		this.init();
@@ -126,7 +127,7 @@
 
 	var dialog = new MainDialog();
 
-	if (!doc) {
+	if(!doc) {
 		alert('対象ドキュメントがありません');
 	} else {
 		dialog.showDialog();
