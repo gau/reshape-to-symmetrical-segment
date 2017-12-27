@@ -19,7 +19,7 @@
 
 ### ダウンロード
 
-* [スクリプトをダウンロードする](https://github.com/gau/resize-all-stroke-width/archive/master.zip)
+* [スクリプトをダウンロードする](https://github.com/gau/reshape-to-symmetrical-segment/archive/master.zip)
 
 ----
 
