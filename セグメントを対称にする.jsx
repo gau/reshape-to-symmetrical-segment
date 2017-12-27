@@ -8,7 +8,7 @@
 
 	// UI dialog ---------------------------------------------------
 	const SCRIPT_TITLE = 'セグメントを対称にする';
-	const SCRIPT_VERSION = '0.5.1';
+	const SCRIPT_VERSION = '0.5.2';
 	const ILLUSTRATOR_VERSION = Number(app.version.split('.')[0]);
 
 	var doc = app.activeDocument;
@@ -83,7 +83,7 @@
 		thisObj.cancel = thisObj.buttonGroup.add('button', undefined, 'キャンセル', {name: 'cancel'});
 		thisObj.ok = thisObj.buttonGroup.add('button', undefined, '実行', { name:'ok'});
 
-		if(ILLUSTRATOR_VERSION >= 17) thisObj.point[settings.point].dispatchEvent(new UIEvent('click'));
+		thisObj.point[settings.point].dispatchEvent(new UIEvent('click'));
 
 		function preview(event) {
 			event.preventDefault();
@@ -224,10 +224,10 @@
 			var dcs = doc.documentColorSpace;
 			if(dcs === DocumentColorSpace.CMYK) {
 				subColor = new CMYKColor();
-				subColor.black = 0;
+				subColor.black = 50;
 				subColor.cyan = 0;
 				subColor.magenta = 0;
-				subColor.yellow = 50;
+				subColor.yellow = 0;
 			} else {
 				subColor = new RGBColor();
 				subColor.red = 128;
