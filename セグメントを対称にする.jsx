@@ -15,6 +15,7 @@
 	if(doc.selection.length < 1) return;
 	var targetPoints = getTargetPoints(doc.selection);
 	if(targetPoints.length < 2) return;
+	var targetLayer = app.activeDocument.selection[0].layer;
 
 	var MainDialog = function() {
 		this.init();
@@ -292,7 +293,7 @@
 
 		var sw = 1 / doc.views[0].zoom * strokeWidth;
 
-		var line = activeDocument.pathItems.add();
+		var line = targetLayer.pathItems.add();
 		line.setEntirePath([from, to]);
 		var color;
 		var dcs = doc.documentColorSpace;
@@ -325,7 +326,7 @@
 		var di = 1 / doc.views[0].zoom * diameter;
 
 		var size = 10;
-		var cir = activeDocument.pathItems.ellipse(point[1] + di / 2, point[0] - di / 2, di, di);
+		var cir = targetLayer.pathItems.ellipse(point[1] + di / 2, point[0] - di / 2, di, di);
 		var color;
 		var dcs = doc.documentColorSpace;
 		if(dcs == DocumentColorSpace.CMYK) {
