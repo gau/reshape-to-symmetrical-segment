@@ -1,22 +1,74 @@
 (function() {
 
-	// Preference ---------------------------------------------------
+	// Settings
 	var settings = {
 		'point' : 1,
-		'smooth' : true
+		'smooth' : true,
+		'showDialog' : true,
+		'showAlert' : true
 	};
 
-	// UI dialog ---------------------------------------------------
-	const SCRIPT_TITLE = 'セグメントを対称にする';
-	const SCRIPT_VERSION = '0.5.2';
+	// Construct
+	const SCRIPT_TITLE = '方向線を対称にする';
+	const SCRIPT_VERSION = '0.6.0';
 	const ILLUSTRATOR_VERSION = Number(app.version.split('.')[0]);
 
+	// Get items
 	var doc = app.activeDocument;
-	if(doc.selection.length < 1) return;
-	var targetPoints = getTargetPoints(doc.selection);
-	if(targetPoints.length < 2) return;
-	var targetLayer = app.activeDocument.selection[0].layer;
+	var sel = app.selection;
+	var textFrames = doc.textFrames;
 
+	// Get text path
+	var textPaths = [];
+	if(sel.length === 0) {
+		for (var i = 0; i < textFrames.length; i++) {
+			try {
+				var textPath = textFrames[i].textPath;
+				if(textPath.selectedPathPoints.length > 0) textPaths.push(textPath);
+			} catch(e) {
+			}
+		}
+	} else if(sel.length === 1) {
+		if(sel[0].typename === 'TextFrame' && sel[0].kind === TextType.PATHTEXT) {
+			textPaths.push(sel[0].textPath);
+			sel = [];
+		}
+	}
+
+	// Validation
+	if(!doc) {
+		showAlert('対象ドキュメントがありません');
+		return false;
+	} else if(sel.length === 0 && textPaths.length === 0) {
+		showAlert('対象オブジェクトがありません');
+		return false;
+	} else if(textPaths.length + sel.length > 1) {
+		showAlert('複数のオブジェクトが選択されています');
+		return false;
+	}
+
+	// Set the target path
+	var targetPath = sel.length > 0 ? sel[0] : textPaths[0];
+
+	// Save path point selection
+	var pathPointSelection = [];
+	for (var i = 0; i < targetPath.pathPoints.length; i++) {
+		pathPointSelection[i] = targetPath.pathPoints[i].selected;
+	}
+
+	// Get the current layer
+	var currentLayer = targetPath.typename == 'TextPath' ? targetPath.parent.layer :  targetPath.layer;
+
+	// Get target points
+	var targetPoints = getTargetPoints(targetPath);
+
+	// Validation target points
+	if(targetPoints.length < 2 || targetPoints.length > 2) {
+		showAlert('セグメントを1つのみ、またはアンカーポイントを2点のみを選択してください');
+		return false;
+	}
+
+	// UI dialog
 	var MainDialog = function() {
 		this.init();
 		return this;
@@ -29,7 +81,7 @@
 		thisObj.dlg.margins = [unit * 1.5, unit * 1.5, unit * 1.5, unit * 1.5];
 
 		// ------------
-		thisObj.original = thisObj.dlg.add('panel', undefined, '変更アンカーポイント：');
+		thisObj.original = thisObj.dlg.add('panel', undefined, '変更対象のアンカーポイント：');
 		thisObj.original.minimumSize = [200, undefined];
 		thisObj.original.alignment = 'left';
 		thisObj.original.orientation = 'row';
@@ -101,7 +153,7 @@
 				moveHundle(false);
 				thisObj.closeDialog();
 			} catch(e) {
-				alert('エラーが発生して処理を実行できませんでした\nエラー内容：' + e);
+				showAlert('エラーが発生して処理を実行できませんでした\nエラー内容：' + e);
 			}
 		}
 		thisObj.cancel.onClick = function() {
@@ -127,14 +179,17 @@
 	};
 
 	var dialog = new MainDialog();
-
-	if(!doc) {
-		alert('対象ドキュメントがありません');
-	} else {
+	if(settings.showDialog) {
 		dialog.showDialog();
+	} else {
+		try {
+			moveHundle(false);
+		} catch(e) {
+			showAlert('エラーが発生して処理を実行できませんでした\nエラー内容：' + e);
+		}
 	}
 
-	// Constructor of point ---------------------------------------------------
+	// Constructor of point
 	function Point(pathpoint, isReverse) {
 		this.pt = pathpoint;
 		this.md = isReverse ? 'leftDirection' : 'rightDirection';
@@ -142,7 +197,7 @@
 		return this;
 	};
 
-	// Main process ---------------------------------------------------
+	// Main process
 	function moveHundle(preview) {
 
 		// Get target points
@@ -245,9 +300,9 @@
 		}
 
 		// Reselect target points
-		doc.selection = null;
-		base.pt.selected = PathPointSelection.ANCHORPOINT;
-		move.pt.selected = PathPointSelection.ANCHORPOINT;
+		for (var i = 0; i < targetPath.pathPoints.length; i++) {
+			targetPath.pathPoints[i].selected = pathPointSelection[i];
+		}
 
 	}
 
@@ -293,7 +348,7 @@
 
 		var sw = 1 / doc.views[0].zoom * strokeWidth;
 
-		var line = targetLayer.pathItems.add();
+		var line = currentLayer.pathItems.add();
 		line.setEntirePath([from, to]);
 		var color;
 		var dcs = doc.documentColorSpace;
@@ -326,7 +381,7 @@
 		var di = 1 / doc.views[0].zoom * diameter;
 
 		var size = 10;
-		var cir = targetLayer.pathItems.ellipse(point[1] + di / 2, point[0] - di / 2, di, di);
+		var cir = currentLayer.pathItems.ellipse(point[1] + di / 2, point[0] - di / 2, di, di);
 		var color;
 		var dcs = doc.documentColorSpace;
 		if(dcs == DocumentColorSpace.CMYK) {
@@ -349,22 +404,41 @@
 	}
 
 	// Get target path points
-	function getTargetPoints(selection) {
+	function getTargetPoints(selectedItem) {
 		var points = [];
-		for(i = 0; i < selection.length; i++) {
-			if(selection[i].typename == 'PathItem') {
-				for(j = 0; j < selection[i].pathPoints.length; j++) {
-					var nextIndex = j == selection[i].pathPoints.length - 1 ? 0 : j + 1;
-					if(j == selection[i].pathPoints.length - 1 && !selection[i].closed) break;
-					if((selection[i].pathPoints[j].selected == PathPointSelection.RIGHTDIRECTION && selection[i].pathPoints[nextIndex].selected == PathPointSelection.LEFTDIRECTION) || (selection[i].pathPoints[j].selected == PathPointSelection.ANCHORPOINT && selection[i].pathPoints[nextIndex].selected == PathPointSelection.ANCHORPOINT)) {
-						points.push(new Point(selection[i].pathPoints[j], false));
-						points.push(new Point(selection[i].pathPoints[nextIndex], true));
+		if(selectedItem.typename == 'PathItem' || selectedItem.typename == 'TextPath') {
+			for(i = 0; i < selectedItem.pathPoints.length; i++) {
+				if(selectedItem.pathPoints[i].selected === PathPointSelection.ANCHORPOINT) {
+					var reverse = points.length > 0;
+					points.push(new Point(selectedItem.pathPoints[i], reverse));
+				}
+			}
+			if(points.length < 2) {
+				points = [];
+				if(selectedItem.pathPoints.length > 1 && selectedItem.selectedPathPoints.length !== 1 && selectedItem.pathPoints[0].selected === PathPointSelection.ANCHORPOINT) {
+					points.push(new Point(selectedItem.pathPoints[0], false));
+					points.push(new Point(selectedItem.pathPoints[1], true));
+				} else if(selectedItem.pathPoints.length > 1 && selectedItem.selectedPathPoints.length !== 1 && selectedItem.pathPoints[selectedItem.pathPoints.length - 1].selected === PathPointSelection.ANCHORPOINT) {
+					points.push(new Point(selectedItem.pathPoints[selectedItem.pathPoints.length - 2], false));
+					points.push(new Point(selectedItem.pathPoints[selectedItem.pathPoints.length - 1], true));
+				}
+			}
+			if(points.length < 2) {
+				for(i = 0; i < selectedItem.pathPoints.length; i++) {
+					var nextIndex = i == selectedItem.pathPoints.length - 1 ? 0 : i + 1;
+					if(i == selectedItem.pathPoints.length - 1 && !selectedItem.closed) break;
+					if((selectedItem.pathPoints[i].selected === PathPointSelection.RIGHTDIRECTION && selectedItem.pathPoints[nextIndex].selected === PathPointSelection.LEFTDIRECTION) || (selectedItem.pathPoints[i].selected === PathPointSelection.ANCHORPOINT && selectedItem.pathPoints[nextIndex].selected === PathPointSelection.ANCHORPOINT)) {
+						points.push(new Point(selectedItem.pathPoints[i], false));
+						points.push(new Point(selectedItem.pathPoints[nextIndex], true));
 					}
 				}
-				break;
 			}
 		}
 		return points;
 	}
 
+	// Show alert
+	function showAlert(message) {
+		if(settings.showAlert) alert(message);
+	}
 }());
