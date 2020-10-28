@@ -83,7 +83,7 @@
 
 | キー | 型 | 説明 | 値 |
 |:-----|:-----|:-----|:-----|
-| point | Number | 変更対象のアンカーポイント | 0：前（初期値）｜1：後 |
+| point | Number | 変更対象のアンカーポイント | 0：前｜1：後（初期値） |
 | smooth | Boolean | スムーズポイントにする | true：オン（初期値）｜false：オフ |
 | showDialog | Boolean | ダイアログを表示 | true：する（初期値）｜false：しない |
 | showAlert | Boolean | エラーなどの警告を表示する | true：する（初期値）｜false：しない |
